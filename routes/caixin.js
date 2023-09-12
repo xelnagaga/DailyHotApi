@@ -1,40 +1,125 @@
 const Router = require("koa-router");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const { get, set } = require("../utils/cacheData");
+const { get, set, del } = require("../utils/cacheData");
 
 const caixinRouter = new Router();
+
+const routerInfo = {
+  name: "caixin",
+  title: "财新网",
+  subtitle: "热榜",
+};
+
 const cacheKey = "caixinData";
 const url = "https://www.caixin.com/";
 
-const getData = async () => {
-    const response = await axios.get(url);
-    const $ = cheerio.load(response.data);
-    
-    const hotList = [];
-    const selector = 'body > div:nth-child(2) > div:nth-child(5) > div:nth-child(1) > div:nth-child(2) > dl:nth-child(1) > dd > p';
-    $(selector).each((i, el) => {
-        const news = $(el).text().trim();
-        hotList.push(news);
-    });
+let updateTime = new Date().toISOString();
 
-    return hotList;
+const getDataFromHtml = (html) => {
+  const $ = cheerio.load(html);
+  const hotList = [];
+  
+  $('.news_list dl').each((i, el) => {
+    const imageUrl = $(el).find('dt img').attr('data-src');
+    const category = $(el).find('dd .tit em a').text();
+    const title = $(el).find('dd p a').first().text();
+    const link = $(el).find('dd p a').first().attr('href');
+    const timestamp = $(el).find('dd span').text();
+
+    hotList.push({
+      imageUrl,
+      category,
+      title,
+      link,
+      timestamp
+    });
+  });
+  
+  return hotList;
 };
 
 caixinRouter.get("/caixin", async (ctx) => {
+  try {
     let data = await get(cacheKey);
+    const from = data ? "cache" : "server";
+    
     if (!data) {
-        data = await getData();
-        await set(cacheKey, data);
+      const response = await axios.get(url);
+      data = getDataFromHtml(response.data);
+      await set(cacheKey, data);
+      updateTime = new Date().toISOString();
     }
+
     ctx.body = {
+      code: 200,
+      message: "获取成功",
+      ...routerInfo,
+      from,
+      updateTime,
+      data
+    };
+  } catch (error) {
+    console.error(error);
+    
+    const cachedData = await get(cacheKey);
+    if (cachedData) {
+      ctx.body = {
         code: 200,
         message: "获取成功",
-        name: "caixin",
-        title: "财新网",
-        subtitle: "热榜",
-        data
+        ...routerInfo,
+        from: "cache",
+        updateTime,
+        data: cachedData
+      };
+    } else {
+      ctx.body = {
+        code: 500,
+        ...routerInfo,
+        message: "获取失败",
+      };
+    }
+  }
+});
+
+caixinRouter.get("/caixin/new", async (ctx) => {
+  try {
+    const response = await axios.get(url);
+    const newData = getDataFromHtml(response.data);
+    updateTime = new Date().toISOString();
+    
+    await del(cacheKey);
+    await set(cacheKey, newData);
+
+    ctx.body = {
+      code: 200,
+      message: "获取成功",
+      ...routerInfo,
+      from: "server",
+      updateTime,
+      data: newData
     };
+  } catch (error) {
+    console.error(error);
+    
+    const cachedData = await get(cacheKey);
+    if (cachedData) {
+      ctx.body = {
+        code: 200,
+        message: "获取成功",
+        ...routerInfo,
+        from: "cache",
+        updateTime,
+        data: cachedData
+      };
+    } else {
+      ctx.body = {
+        code: 500,
+        ...routerInfo,
+        message: "获取失败",
+      };
+    }
+  }
 });
 
 module.exports = caixinRouter;
