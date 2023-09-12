@@ -24,14 +24,14 @@ const getDataFromHtml = (html) => {
     const imageUrl = $(el).find('dt img').attr('data-src');
     const category = $(el).find('dd .tit em a').text();
     const title = $(el).find('dd p a').first().text();
-    const link = $(el).find('dd p a').first().attr('href');
+    const url = $(el).find('dd p a').first().attr('href');
     const timestamp = $(el).find('dd span').text();
 
     hotList.push({
       imageUrl,
       category,
       title,
-      link,
+      url,
       timestamp
     });
   });
