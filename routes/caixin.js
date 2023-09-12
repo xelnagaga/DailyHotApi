@@ -26,13 +26,15 @@ const getDataFromHtml = (html) => {
     const title = $(el).find('dd p a').first().text();
     const url = $(el).find('dd p a').first().attr('href');
     const timestamp = $(el).find('dd span').text();
+    const mobileUrl = $(el).find('dd p a').first().attr('href');
 
     hotList.push({
       imageUrl,
       category,
       title,
       url,
-      timestamp
+      timestamp,
+      mobileUrl
     });
   });
   
