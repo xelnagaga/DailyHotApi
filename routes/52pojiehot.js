@@ -45,8 +45,15 @@ pjRouter.get("/52pojie", async (ctx) => {
     if (!data) {
       console.log("从服务端重新获取52破解热榜");
       const response = await axios.get(url, { responseType: 'arraybuffer' });
-      const decoder = new TextDecoder('gbk');  // Specify the encoding here
+
+      // Extract charset from Content-Type header
+      const contentType = response.headers['content-type'];
+      const matches = contentType.match(/charset=([\w-]+)/);
+      const encoding = matches && matches[1] ? matches[1] : 'gbk';  // default to 'gbk' if charset is not found
+
+      const decoder = new TextDecoder(encoding);
       const html = decoder.decode(response.data);
+
       data = getData(html);
       updateTime = new Date().toISOString();
       await set(cacheKey, data);
@@ -79,8 +86,17 @@ pjRouter.get("/52pojie", async (ctx) => {
 pjRouter.get("/52pojie/new", async (ctx) => {
   console.log("获取52破解热榜 - 最新数据");
   try {
-    const response = await axios.get(url);
-    const newData = getData(response.data);
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
+
+    // Extract charset from Content-Type header
+    const contentType = response.headers['content-type'];
+    const matches = contentType.match(/charset=([\w-]+)/);
+    const encoding = matches && matches[1] ? matches[1] : 'gbk';  // default to 'gbk' if charset is not found
+
+    const decoder = new TextDecoder(encoding);
+    const html = decoder.decode(response.data);
+
+    const newData = getData(html);
     updateTime = new Date().toISOString();
     console.log("从服务端重新获取52破解热榜");
 
@@ -116,6 +132,7 @@ pjRouter.get("/52pojie/new", async (ctx) => {
     }
   }
 });
+
 
 pjRouter.info = routerInfo;
 module.exports = pjRouter;
