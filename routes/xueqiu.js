@@ -14,28 +14,32 @@ const cacheKey = "xueqiuData";
 const url = "https://xueqiu.com/query/v1/status/hots.json?count=50&scope=day&type=news";
 
 const headers = {
-  Cookie: "xq_a_token=29bdb37dee2432c294425cc9e8f45710a62643a5"
+  Cookie: "xq_a_token=29bdb37dee2432c294425cc9e8f45710a62643a5",
 };
 
 let updateTime = new Date().toISOString();
 
 const getDataFromApi = async () => {
-  const response = await axios.get(url, { headers });
-  
-  return response.data.data.map(item => ({
-    title: item.title,
-    url: item.quote_cards[0].target_url,
-    mobileUrl: item.quote_cards[0].target_url,
-    hot: item.view_count,
-    desc: item.description
-  }));
+  try {
+    const response = await axios.get(url, { headers });
+
+    return response.data.data.map((item) => ({
+      title: item.title,
+      url: item.target,
+      mobileUrl: item.target,
+      hot: item.hot,
+      image: item.pic,
+    }));
+  } catch (error) {
+    throw error;
+  }
 };
 
 xueqiuRouter.get("/xueqiu", async (ctx) => {
   try {
     let data = await get(cacheKey);
     const from = data ? "cache" : "server";
-    
+
     if (!data) {
       data = await getDataFromApi();
       await set(cacheKey, data);
@@ -48,11 +52,11 @@ xueqiuRouter.get("/xueqiu", async (ctx) => {
       ...routerInfo,
       from,
       updateTime,
-      data
+      data,
     };
   } catch (error) {
     console.error(error);
-    
+
     const cachedData = await get(cacheKey);
     if (cachedData) {
       ctx.body = {
@@ -61,7 +65,7 @@ xueqiuRouter.get("/xueqiu", async (ctx) => {
         ...routerInfo,
         from: "cache",
         updateTime,
-        data: cachedData
+        data: cachedData,
       };
     } else {
       ctx.body = {
@@ -77,7 +81,7 @@ xueqiuRouter.get("/xueqiu/new", async (ctx) => {
   try {
     const newData = await getDataFromApi();
     updateTime = new Date().toISOString();
-    
+
     await del(cacheKey);
     await set(cacheKey, newData);
 
@@ -87,11 +91,11 @@ xueqiuRouter.get("/xueqiu/new", async (ctx) => {
       ...routerInfo,
       from: "server",
       updateTime,
-      data: newData
+      data: newData,
     };
   } catch (error) {
     console.error(error);
-    
+
     const cachedData = await get(cacheKey);
     if (cachedData) {
       ctx.body = {
@@ -100,7 +104,7 @@ xueqiuRouter.get("/xueqiu/new", async (ctx) => {
         ...routerInfo,
         from: "cache",
         updateTime,
-        data: cachedData
+        data: cachedData,
       };
     } else {
       ctx.body = {
